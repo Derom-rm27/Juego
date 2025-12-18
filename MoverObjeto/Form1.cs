@@ -15,11 +15,18 @@ namespace MoverObjeto
         System.Windows.Forms.Timer tiempo = new System.Windows.Forms.Timer();
         Label label1 = new Label(); // Vida del rival
         Label label2 = new Label(); // Vida del jugador
+        Panel panelInformacion = new Panel();
+        Panel barraVidaJugadorContenedor = new Panel();
+        Panel barraVidaJugador = new Panel();
+        Panel barraVidaRivalContenedor = new Panel();
+        Panel barraVidaRival = new Panel();
 
         int Dispara = 0;
         bool flag = false;
         float angulo = 0;
         bool naveColisionando = false;
+        int vidaMaxJugador;
+        int vidaMaxRival;
 
         private readonly AvionConfig seleccionJugador;
         private readonly int escenarioSeleccionado;
@@ -91,15 +98,29 @@ namespace MoverObjeto
             Balas.Image = flag;
         }
 
+        private void ActualizarBarra(Panel barra, int valorActual, int valorMaximo)
+        {
+            if (barra.Parent == null || valorMaximo <= 0)
+            {
+                return;
+            }
+
+            int anchoMaximo = barra.Parent.Width - 4;
+            int ancho = (int)(anchoMaximo * Math.Max(valorActual, 0) / (float)valorMaximo);
+            barra.Width = Math.Max(0, ancho);
+        }
+
         private void ActualizarVidaJugador(int delta)
         {
-            int vidaActual = int.Parse(navex.Tag.ToString()) + delta;
+            int vidaActual = Math.Max(0, int.Parse(navex.Tag.ToString()) + delta);
             navex.Tag = vidaActual;
-            label2.Text = "Vida: " + Math.Max(vidaActual, 0);
+            label2.Text = "Vida: " + vidaActual;
+            ActualizarBarra(barraVidaJugador, vidaActual, vidaMaxJugador);
 
             if (vidaActual <= 0)
             {
                 navex.Dispose();
+                barraVidaJugadorContenedor.Visible = false;
                 Bitmap NuevoImg = new Bitmap(contiene.Width, contiene.Height);
                 Graphics flagImagen = Graphics.FromImage(NuevoImg);
                 String drawString = "Perdiste el Juego";
@@ -114,13 +135,15 @@ namespace MoverObjeto
 
         private void ActualizarVidaRival(int delta)
         {
-            int vidaActual = int.Parse(naveRival.Tag.ToString()) + delta;
+            int vidaActual = Math.Max(0, int.Parse(naveRival.Tag.ToString()) + delta);
             naveRival.Tag = vidaActual;
-            label1.Text = "Vida del Rival: " + Math.Max(vidaActual, 0);
+            label1.Text = "Vida del Rival: " + vidaActual;
+            ActualizarBarra(barraVidaRival, vidaActual, vidaMaxRival);
 
             if (vidaActual <= 0)
             {
                 naveRival.Dispose();
+                barraVidaRivalContenedor.Visible = false;
                 Bitmap NuevoImg = new Bitmap(contiene.Width, contiene.Height);
                 Graphics flagImagen = Graphics.FromImage(NuevoImg);
                 String drawString = "Felicitaciones Ganaste!";
@@ -180,6 +203,7 @@ namespace MoverObjeto
                 x--;
             }
             naveRival.Location = new Point(x, y);
+            ActualizarPosicionBarraRival();
 
             if (Colision.EntreNaves(navex, naveRival))
             {
@@ -242,6 +266,18 @@ namespace MoverObjeto
                     }
                 }
             }
+        }
+
+        private void ActualizarPosicionBarraRival()
+        {
+            if (!barraVidaRivalContenedor.Visible || !naveRival.Visible)
+            {
+                return;
+            }
+
+            int x = naveRival.Left;
+            int y = Math.Max(5, naveRival.Top - barraVidaRivalContenedor.Height - 2);
+            barraVidaRivalContenedor.Location = new Point(x, y);
         }
 
         //*** DIAGRAMAR NAVE **********//
@@ -375,28 +411,47 @@ namespace MoverObjeto
             this.Height = 450;
             this.Text = "JUEGO DE AVIONES";
 
+            panelInformacion.Dock = DockStyle.Top;
+            panelInformacion.Height = 80;
+            panelInformacion.Padding = new Padding(10);
+            panelInformacion.BackColor = Color.FromArgb(30, 30, 30);
+
             // Configurar Labels
             label1.Location = new Point(10, 10);
+            label1.ForeColor = Color.White;
             label1.AutoSize = true;
             label2.Location = new Point(10, 30);
+            label2.ForeColor = Color.White;
             label2.AutoSize = true;
-            this.Controls.Add(label1);
-            this.Controls.Add(label2);
+
+            barraVidaJugadorContenedor.Size = new Size(200, 16);
+            barraVidaJugadorContenedor.Location = new Point(10, 50);
+            barraVidaJugadorContenedor.BorderStyle = BorderStyle.FixedSingle;
+            barraVidaJugadorContenedor.BackColor = Color.Black;
+
+            barraVidaJugador.Height = 14;
+            barraVidaJugador.Width = 200;
+            barraVidaJugador.BackColor = Color.LimeGreen;
+            barraVidaJugadorContenedor.Controls.Add(barraVidaJugador);
+
+            panelInformacion.Controls.Add(barraVidaJugadorContenedor);
+            panelInformacion.Controls.Add(label2);
+            panelInformacion.Controls.Add(label1);
 
             this.KeyDown += new KeyEventHandler(ActividadTecla);
             this.KeyPreview = true; // Para que el formulario capture las teclas
 
             // Configurar PictureBox contenedor (contiene)
-            contiene.Location = new Point(0, 50); // Mover el contenedor debajo de las etiquetas
             contiene.BackColor = Color.AliceBlue;
-            contiene.Size = new Size(300, 350); // Reducir un poco el tamaño para dejar espacio a las etiquetas
+            contiene.Size = new Size(this.ClientSize.Width, this.ClientSize.Height - panelInformacion.Height);
             contiene.Dock = DockStyle.Fill;
             contiene.Visible = true;
-            this.Controls.Add(contiene);
-            contiene.BringToFront(); // Para asegurar que las etiquetas estén visibles
 
             contiene.BackgroundImage = Escenarios.CrearEscenario(escenarioSeleccionado, contiene.ClientSize);
             contiene.BackgroundImageLayout = ImageLayout.Stretch;
+
+            this.Controls.Add(contiene);
+            this.Controls.Add(panelInformacion);
 
             //----- contenido del formulario
             Random r = new Random();
@@ -404,20 +459,37 @@ namespace MoverObjeto
 
             // NAVE JUGADOR
             CrearNave(navex, 0, seleccionJugador);
-            navex.Tag = 100; // Vida inicial garantizada
+            navex.Tag = seleccionJugador.Vida; // Vida inicial garantizada
+            vidaMaxJugador = seleccionJugador.Vida;
 
             // ELEGIR NAVE DE SALIDA RIVAL
             Random sal = new Random();
             int sale = sal.Next(1, 4);
             AvionConfig configRival = new("Rival", sale, 50, Color.DarkBlue);
             CrearNave(naveRival, 180, configRival);
+            vidaMaxRival = configRival.Vida;
 
             // Posicionar naves
             navex.Location = new Point(aleatxr, 300); 
             naveRival.Location = new Point(aleatxr, 50);
 
+            barraVidaRivalContenedor.Size = new Size(naveRival.Width, 8);
+            barraVidaRivalContenedor.BackColor = Color.Black;
+            barraVidaRivalContenedor.Visible = true;
+            barraVidaRivalContenedor.Controls.Clear();
+
+            barraVidaRival.Height = 6;
+            barraVidaRival.Width = naveRival.Width;
+            barraVidaRival.BackColor = Color.Red;
+            barraVidaRivalContenedor.Controls.Add(barraVidaRival);
+            contiene.Controls.Add(barraVidaRivalContenedor);
+            barraVidaRivalContenedor.BringToFront();
+            ActualizarPosicionBarraRival();
+
             label1.Text = "Vida del Rival: " + configRival.Vida;
             label2.Text = "Vida: " + navex.Tag;
+            ActualizarBarra(barraVidaJugador, (int)navex.Tag, vidaMaxJugador);
+            ActualizarBarra(barraVidaRival, (int)naveRival.Tag, vidaMaxRival);
 
             // Inicializar y configurar el Timer (bucle de juego)
             tiempo.Interval = 50; // Intervalo más razonable para Windows Forms (50ms)
