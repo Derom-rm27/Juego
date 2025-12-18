@@ -1,0 +1,11 @@
+﻿# Ignorar imágenes de escenarios
+escenario1.jpg
+escenario2.jpg
+escenario3.jpg
+escenario4.jpg
+
+# Ignorar otras posibles extensiones de imagen
+*.png
+*.jpeg
+*.bmp
+*.gif

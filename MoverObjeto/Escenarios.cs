@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
+using System.Windows.Forms;
 
 namespace MoverObjeto
 {
@@ -9,6 +11,60 @@ namespace MoverObjeto
         public static int TotalEscenarios => 4;
 
         public static Bitmap CrearEscenario(int numeroEscenario, Size tamano)
+        {
+            // Determinar el índice del escenario (1 a 4)
+            int indice = (numeroEscenario % TotalEscenarios) + 1;
+            
+            // Intentar cargar la imagen para TODOS los escenarios
+            string nombreArchivo = $"escenario{indice}.jpg";
+            string ruta = Path.Combine(Application.StartupPath, nombreArchivo);
+
+            // Búsqueda en directorio del proyecto si no está en bin/Debug
+            if (!File.Exists(ruta))
+            {
+                try 
+                {
+                    string rutaProyecto = Path.GetFullPath(Path.Combine(Application.StartupPath, @"..\..\.."));
+                    string rutaEnProyecto = Path.Combine(rutaProyecto, nombreArchivo);
+                    if (File.Exists(rutaEnProyecto))
+                    {
+                        ruta = rutaEnProyecto;
+                    }
+                }
+                catch { /* Ignorar errores de ruta */ }
+            }
+
+            if (File.Exists(ruta))
+            {
+                try
+                {
+                    using (var img = Image.FromFile(ruta))
+                    {
+                        // Crear un bitmap de alta calidad
+                        Bitmap fondoAltaCalidad = new Bitmap(tamano.Width, tamano.Height);
+                        using (Graphics g = Graphics.FromImage(fondoAltaCalidad))
+                        {
+                            // Configuración para máxima calidad de escalado
+                            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                            g.SmoothingMode = SmoothingMode.HighQuality;
+                            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                            g.CompositingQuality = CompositingQuality.HighQuality;
+
+                            g.DrawImage(img, new Rectangle(0, 0, tamano.Width, tamano.Height));
+                        }
+                        return fondoAltaCalidad;
+                    }
+                }
+                catch 
+                { 
+                    // Si falla la carga, continuará y generará el fondo por código
+                }
+            }
+
+            return GenerarFondoPorCodigo(numeroEscenario, tamano);
+        }
+
+        private static Bitmap GenerarFondoPorCodigo(int numeroEscenario, Size tamano)
         {
             Bitmap fondo = new Bitmap(tamano.Width, tamano.Height);
             using (Graphics g = Graphics.FromImage(fondo))
