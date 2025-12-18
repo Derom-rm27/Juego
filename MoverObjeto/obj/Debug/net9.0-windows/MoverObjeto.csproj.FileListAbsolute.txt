@@ -1,0 +1,15 @@
+C:\juego\MoverObjeto\MoverObjeto\bin\Debug\net9.0-windows\MoverObjeto.exe
+C:\juego\MoverObjeto\MoverObjeto\bin\Debug\net9.0-windows\MoverObjeto.deps.json
+C:\juego\MoverObjeto\MoverObjeto\bin\Debug\net9.0-windows\MoverObjeto.runtimeconfig.json
+C:\juego\MoverObjeto\MoverObjeto\bin\Debug\net9.0-windows\MoverObjeto.dll
+C:\juego\MoverObjeto\MoverObjeto\bin\Debug\net9.0-windows\MoverObjeto.pdb
+C:\juego\MoverObjeto\MoverObjeto\obj\Debug\net9.0-windows\MoverObjeto.GeneratedMSBuildEditorConfig.editorconfig
+C:\juego\MoverObjeto\MoverObjeto\obj\Debug\net9.0-windows\MoverObjeto.AssemblyInfoInputs.cache
+C:\juego\MoverObjeto\MoverObjeto\obj\Debug\net9.0-windows\MoverObjeto.AssemblyInfo.cs
+C:\juego\MoverObjeto\MoverObjeto\obj\Debug\net9.0-windows\MoverObjeto.csproj.CoreCompileInputs.cache
+C:\juego\MoverObjeto\MoverObjeto\obj\Debug\net9.0-windows\MoverObjeto.sourcelink.json
+C:\juego\MoverObjeto\MoverObjeto\obj\Debug\net9.0-windows\MoverObjeto.dll
+C:\juego\MoverObjeto\MoverObjeto\obj\Debug\net9.0-windows\refint\MoverObjeto.dll
+C:\juego\MoverObjeto\MoverObjeto\obj\Debug\net9.0-windows\MoverObjeto.pdb
+C:\juego\MoverObjeto\MoverObjeto\obj\Debug\net9.0-windows\MoverObjeto.genruntimeconfig.cache
+C:\juego\MoverObjeto\MoverObjeto\obj\Debug\net9.0-windows\ref\MoverObjeto.dll

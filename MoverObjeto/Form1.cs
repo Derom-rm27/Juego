@@ -12,7 +12,7 @@ namespace MoverObjeto
         PictureBox navex = new PictureBox();
         PictureBox naveRival = new PictureBox();
         PictureBox contiene = new PictureBox();
-        Timer tiempo = new Timer();
+        System.Windows.Forms.Timer tiempo;
         Label label1 = new Label(); // Vida del rival
         Label label2 = new Label(); // Vida del jugador
 
