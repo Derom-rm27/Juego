@@ -15,11 +15,22 @@ namespace MoverObjeto
         System.Windows.Forms.Timer tiempo = new System.Windows.Forms.Timer();
         Label label1 = new Label(); // Vida del rival
         Label label2 = new Label(); // Vida del jugador
+        Panel panelInformacion = new Panel();
+        Panel barraVidaJugadorContenedor = new Panel();
+        Panel barraVidaJugador = new Panel();
+        Panel barraVidaRivalContenedor = new Panel();
+        Panel barraVidaRival = new Panel();
 
         int Dispara = 0;
         bool flag = false;
         float angulo = 0;
         bool naveColisionando = false;
+        int vidaMaxJugador;
+        int vidaMaxRival;
+        int escalaJugador;
+        int escalaRival;
+        AvionConfig configJugadorActual = AvionFactory.Blindado;
+        AvionConfig configRivalActual = new("Rival", 1, 50, Color.DarkBlue, 2);
 
         private readonly AvionConfig seleccionJugador;
         private readonly int escenarioSeleccionado;
@@ -91,15 +102,29 @@ namespace MoverObjeto
             Balas.Image = flag;
         }
 
+        private void ActualizarBarra(Panel barra, int valorActual, int valorMaximo)
+        {
+            if (barra.Parent == null || valorMaximo <= 0)
+            {
+                return;
+            }
+
+            int anchoMaximo = barra.Parent.Width - 4;
+            int ancho = (int)(anchoMaximo * Math.Max(valorActual, 0) / (float)valorMaximo);
+            barra.Width = Math.Max(0, ancho);
+        }
+
         private void ActualizarVidaJugador(int delta)
         {
-            int vidaActual = int.Parse(navex.Tag.ToString()) + delta;
+            int vidaActual = Math.Max(0, int.Parse(navex.Tag.ToString()) + delta);
             navex.Tag = vidaActual;
-            label2.Text = "Vida: " + Math.Max(vidaActual, 0);
+            label2.Text = "Vida: " + vidaActual;
+            ActualizarBarra(barraVidaJugador, vidaActual, vidaMaxJugador);
 
             if (vidaActual <= 0)
             {
                 navex.Dispose();
+                barraVidaJugadorContenedor.Visible = false;
                 Bitmap NuevoImg = new Bitmap(contiene.Width, contiene.Height);
                 Graphics flagImagen = Graphics.FromImage(NuevoImg);
                 String drawString = "Perdiste el Juego";
@@ -114,13 +139,15 @@ namespace MoverObjeto
 
         private void ActualizarVidaRival(int delta)
         {
-            int vidaActual = int.Parse(naveRival.Tag.ToString()) + delta;
+            int vidaActual = Math.Max(0, int.Parse(naveRival.Tag.ToString()) + delta);
             naveRival.Tag = vidaActual;
-            label1.Text = "Vida del Rival: " + Math.Max(vidaActual, 0);
+            label1.Text = "Vida del Rival: " + vidaActual;
+            ActualizarBarra(barraVidaRival, vidaActual, vidaMaxRival);
 
             if (vidaActual <= 0)
             {
                 naveRival.Dispose();
+                barraVidaRivalContenedor.Visible = false;
                 Bitmap NuevoImg = new Bitmap(contiene.Width, contiene.Height);
                 Graphics flagImagen = Graphics.FromImage(NuevoImg);
                 String drawString = "Felicitaciones Ganaste!";
@@ -180,6 +207,7 @@ namespace MoverObjeto
                 x--;
             }
             naveRival.Location = new Point(x, y);
+            ActualizarPosicionBarraRival();
 
             if (Colision.EntreNaves(navex, naveRival))
             {
@@ -244,10 +272,92 @@ namespace MoverObjeto
             }
         }
 
+        private void ActualizarPosicionBarraRival()
+        {
+            if (naveRival.IsDisposed || !barraVidaRivalContenedor.Visible || !naveRival.Visible)
+            {
+                return;
+            }
+
+            int x = naveRival.Left;
+            int y = Math.Max(5, naveRival.Top - barraVidaRivalContenedor.Height - 2);
+            barraVidaRivalContenedor.Location = new Point(x, y);
+        }
+
+        private void AjustarHud()
+        {
+            int anchoDisponible = panelInformacion.ClientSize.Width - 20;
+            barraVidaJugadorContenedor.Width = Math.Max(120, anchoDisponible);
+            if (navex.Tag is int vida)
+            {
+                ActualizarBarra(barraVidaJugador, vida, vidaMaxJugador);
+            }
+        }
+
+        private void MantenerNavesEnPantalla()
+        {
+            if (contiene.ClientRectangle.Width == 0 || contiene.ClientRectangle.Height == 0)
+            {
+                return;
+            }
+
+            void Ajustar(PictureBox nave)
+            {
+                if (nave.IsDisposed)
+                {
+                    return;
+                }
+
+                int x = Math.Min(Math.Max(nave.Left, 0), Math.Max(0, contiene.Width - nave.Width));
+                int y = Math.Min(Math.Max(nave.Top, 0), Math.Max(0, contiene.Height - nave.Height));
+                nave.Location = new Point(x, y);
+            }
+
+            Ajustar(navex);
+            Ajustar(naveRival);
+            ActualizarPosicionBarraRival();
+        }
+
+        private void ReescalarNave(PictureBox avion, AvionConfig config, int angulo, ref int escalaActual)
+        {
+            if (avion.IsDisposed)
+            {
+                return;
+            }
+
+            if (!avion.Visible)
+            {
+                escalaActual = config.Escala;
+                return;
+            }
+
+            int nuevaEscala = config.Escala;
+            if (nuevaEscala == escalaActual)
+            {
+                return;
+            }
+
+            Point centroActual = new(avion.Left + avion.Width / 2, avion.Top + avion.Height / 2);
+            int vidaActual = avion.Tag is int vida ? vida : int.Parse(avion.Tag?.ToString() ?? config.Vida.ToString());
+
+            AvionRender render = AvionFactory.Crear(config.Tipo, angulo, config.Color, nuevaEscala);
+            avion.Size = render.Tamano;
+            avion.Region = render.Region;
+            avion.Image = render.Imagen;
+            avion.Location = new Point(
+                Math.Max(0, centroActual.X - avion.Width / 2),
+                Math.Max(0, centroActual.Y - avion.Height / 2));
+            avion.Tag = vidaActual;
+            avion.BringToFront();
+
+            escalaActual = nuevaEscala;
+            MantenerNavesEnPantalla();
+        }
+
         //*** DIAGRAMAR NAVE **********//
         public void CrearNave(PictureBox Avion, int AngRotar, AvionConfig config)
         {
-            AvionRender render = AvionFactory.Crear(config.Tipo, AngRotar, config.Color);
+            AvionRender render = AvionFactory.Crear(config.Tipo, AngRotar, config.Color, config.Escala);
 
             Avion.BackColor = Color.Transparent;
             Avion.Size = render.Tamano;
@@ -365,59 +475,146 @@ namespace MoverObjeto
                         break;
                     }
             }
+
+            MantenerNavesEnPantalla();
+            ActualizarPosicionBarraRival();
+        }
+
+        private void RedimensionarTodo()
+        {
+            if (!juegoListo)
+            {
+                return;
+            }
+
+            RegenerarEscenario();
+            AjustarHud();
+            int nuevaEscalaJugador = CalcularEscalaJugador();
+            int nuevaEscalaRival = CalcularEscalaRival();
+            var configJugadorRedimensionado = configJugadorActual with { Escala = nuevaEscalaJugador };
+            ReescalarNave(navex, configJugadorRedimensionado, 0, ref escalaJugador);
+            configJugadorActual = configJugadorRedimensionado;
+
+            var configRivalRedimensionado = configRivalActual with { Escala = nuevaEscalaRival };
+            ReescalarNave(naveRival, configRivalRedimensionado, 180, ref escalaRival);
+            configRivalActual = configRivalRedimensionado;
+
+            MantenerNavesEnPantalla();
+        }
+
+        private void RegenerarEscenario()
+        {
+            if (contiene.ClientSize.Width == 0 || contiene.ClientSize.Height == 0)
+            {
+                return;
+            }
+
+            contiene.BackgroundImage = Escenarios.CrearEscenario(escenarioSeleccionado, contiene.ClientSize);
+        }
+
+        private int CalcularEscalaJugador()
+        {
+            return Math.Max(3, Math.Min(6, contiene.ClientSize.Width / 160));
+        }
+
+        private int CalcularEscalaRival()
+        {
+            return Math.Max(2, Math.Min(5, contiene.ClientSize.Width / 200));
         }
 
         //*** ACTIVAR ACCIONES DE INICIALIZACION **********************//
         public void Iniciar()
         {
-            this.FormBorderStyle = FormBorderStyle.FixedSingle; // Cambiado a FixedSingle para mejor control
-            this.Width = 345;
-            this.Height = 450;
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.MinimumSize = new Size(360, 500);
+            this.Width = 1600;
+            this.Height = 1024;
             this.Text = "JUEGO DE AVIONES";
+            this.DoubleBuffered = true;
+
+            panelInformacion.Dock = DockStyle.Top;
+            panelInformacion.Height = 80;
+            panelInformacion.Padding = new Padding(10);
+            panelInformacion.BackColor = Color.FromArgb(30, 30, 30);
 
             // Configurar Labels
             label1.Location = new Point(10, 10);
+            label1.ForeColor = Color.White;
             label1.AutoSize = true;
             label2.Location = new Point(10, 30);
+            label2.ForeColor = Color.White;
             label2.AutoSize = true;
-            this.Controls.Add(label1);
-            this.Controls.Add(label2);
+
+            barraVidaJugadorContenedor.Size = new Size(200, 16);
+            barraVidaJugadorContenedor.Location = new Point(10, 50);
+            barraVidaJugadorContenedor.BorderStyle = BorderStyle.FixedSingle;
+            barraVidaJugadorContenedor.BackColor = Color.Black;
+
+            barraVidaJugador.Height = 14;
+            barraVidaJugador.Width = 200;
+            barraVidaJugador.BackColor = Color.LimeGreen;
+            barraVidaJugadorContenedor.Controls.Add(barraVidaJugador);
+
+            panelInformacion.Controls.Add(barraVidaJugadorContenedor);
+            panelInformacion.Controls.Add(label2);
+            panelInformacion.Controls.Add(label1);
 
             this.KeyDown += new KeyEventHandler(ActividadTecla);
             this.KeyPreview = true; // Para que el formulario capture las teclas
+            this.Resize += (s, e) => RedimensionarTodo();
 
             // Configurar PictureBox contenedor (contiene)
-            contiene.Location = new Point(0, 50); // Mover el contenedor debajo de las etiquetas
             contiene.BackColor = Color.AliceBlue;
-            contiene.Size = new Size(300, 350); // Reducir un poco el tamaño para dejar espacio a las etiquetas
+            contiene.Size = new Size(this.ClientSize.Width, this.ClientSize.Height - panelInformacion.Height);
             contiene.Dock = DockStyle.Fill;
             contiene.Visible = true;
-            this.Controls.Add(contiene);
-            contiene.BringToFront(); // Para asegurar que las etiquetas estén visibles
 
-            contiene.BackgroundImage = Escenarios.CrearEscenario(escenarioSeleccionado, contiene.ClientSize);
             contiene.BackgroundImageLayout = ImageLayout.Stretch;
 
-            //----- contenido del formulario
-            Random r = new Random();
-            int aleatxr = r.Next(50, 250);
+            this.Controls.Add(contiene);
+            this.Controls.Add(panelInformacion);
 
-            // NAVE JUGADOR
-            CrearNave(navex, 0, seleccionJugador);
-            navex.Tag = 100; // Vida inicial garantizada
+            //----- contenido del formulario
+            escalaJugador = CalcularEscalaJugador();
+            configJugadorActual = seleccionJugador with { Escala = escalaJugador };
+            CrearNave(navex, 0, configJugadorActual);
+            navex.Tag = configJugadorActual.Vida; // Vida inicial garantizada
+            vidaMaxJugador = configJugadorActual.Vida;
 
             // ELEGIR NAVE DE SALIDA RIVAL
             Random sal = new Random();
             int sale = sal.Next(1, 4);
-            AvionConfig configRival = new("Rival", sale, 50, Color.DarkBlue);
-            CrearNave(naveRival, 180, configRival);
+            escalaRival = CalcularEscalaRival();
+            configRivalActual = new AvionConfig("Rival", sale, 50, Color.DarkBlue, escalaRival);
+            CrearNave(naveRival, 180, configRivalActual);
+            vidaMaxRival = configRivalActual.Vida;
 
             // Posicionar naves
-            navex.Location = new Point(aleatxr, 300); 
-            naveRival.Location = new Point(aleatxr, 50);
+            int centroX = Math.Max(0, (contiene.Width / 2) - (navex.Width / 2));
+            navex.Location = new Point(centroX, Math.Max(0, contiene.Height - navex.Height - 20)); 
+            naveRival.Location = new Point(Math.Max(0, (contiene.Width / 2) - (naveRival.Width / 2)), 20);
+            navex.BringToFront();
+            naveRival.BringToFront();
 
-            label1.Text = "Vida del Rival: " + configRival.Vida;
+            barraVidaRivalContenedor.Size = new Size(naveRival.Width, 8);
+            barraVidaRivalContenedor.BackColor = Color.Black;
+            barraVidaRivalContenedor.Visible = true;
+            barraVidaRivalContenedor.Controls.Clear();
+
+            barraVidaRival.Height = 6;
+            barraVidaRival.Width = naveRival.Width;
+            barraVidaRival.BackColor = Color.Red;
+            barraVidaRivalContenedor.Controls.Add(barraVidaRival);
+            contiene.Controls.Add(barraVidaRivalContenedor);
+            barraVidaRivalContenedor.BringToFront();
+            ActualizarPosicionBarraRival();
+
+            label1.Text = "Vida del Rival: " + configRivalActual.Vida;
             label2.Text = "Vida: " + navex.Tag;
+            ActualizarBarra(barraVidaJugador, (int)navex.Tag, vidaMaxJugador);
+            ActualizarBarra(barraVidaRival, (int)naveRival.Tag, vidaMaxRival);
+            RegenerarEscenario();
+            AjustarHud();
 
             // Inicializar y configurar el Timer (bucle de juego)
             tiempo.Interval = 50; // Intervalo más razonable para Windows Forms (50ms)

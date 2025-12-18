@@ -5,45 +5,53 @@ using System.Linq;
 
 namespace MoverObjeto;
 
-public record AvionConfig(string Nombre, int Tipo, int Vida, Color Color);
+public record AvionConfig(string Nombre, int Tipo, int Vida, Color Color, int Escala = 3);
 
 public static class AvionFactory
 {
-    public static AvionConfig Blindado => new("Blindado", 1, 100, Color.SeaGreen);
-    public static AvionConfig Equilibrado => new("Equilibrado", 2, 70, Color.SteelBlue);
-    public static AvionConfig Ligero => new("Ligero", 3, 50, Color.Goldenrod);
+    public static AvionConfig Blindado => new("Blindado", 1, 100, Color.SeaGreen, 3);
+    public static AvionConfig Equilibrado => new("Equilibrado", 2, 70, Color.SteelBlue, 3);
+    public static AvionConfig Ligero => new("Ligero", 3, 50, Color.Goldenrod, 3);
     public static IReadOnlyList<AvionConfig> Disponibles => new[] { Blindado, Equilibrado, Ligero };
 
-    public static AvionRender Crear(int tipox, int angRotar, Color color)
+    public static AvionRender Crear(int tipox, int angRotar, Color color, int factorEscala = 3)
     {
         Point[] puntosBase = tipox switch
         {
             1 => new[]
             {
-                new Point(29, 0), new Point(39, 28), new Point(50, 51), new Point(35, 74),
-                new Point(23, 74), new Point(0, 59), new Point(19, 28), new Point(29, 0)
+                new Point(18, 0), new Point(32, 18), new Point(40, 32), new Point(48, 36),
+                new Point(58, 52), new Point(46, 76), new Point(36, 94), new Point(24, 110),
+                new Point(14, 94), new Point(4, 76), new Point(0, 52), new Point(10, 36),
+                new Point(18, 32), new Point(24, 18), new Point(18, 0)
             },
             2 => new[]
             {
-                new Point(22, 0), new Point(32, 10), new Point(42, 22), new Point(38, 40),
-                new Point(28, 52), new Point(12, 52), new Point(4, 36), new Point(10, 18), new Point(22, 0)
+                new Point(16, 0), new Point(30, 10), new Point(46, 22), new Point(54, 36),
+                new Point(60, 52), new Point(52, 70), new Point(34, 88), new Point(18, 70),
+                new Point(10, 52), new Point(8, 36), new Point(12, 22), new Point(16, 10), new Point(16, 0)
             },
             3 => new[]
             {
-                new Point(16, 0), new Point(30, 12), new Point(38, 26), new Point(32, 46),
-                new Point(18, 54), new Point(4, 44), new Point(0, 26), new Point(8, 10), new Point(16, 0)
+                new Point(12, 0), new Point(24, 12), new Point(38, 20), new Point(48, 34),
+                new Point(44, 52), new Point(34, 66), new Point(24, 80), new Point(12, 66),
+                new Point(6, 48), new Point(6, 28), new Point(10, 14), new Point(12, 0)
             },
             _ => throw new ArgumentOutOfRangeException(nameof(tipox), "Tipo de avión desconocido")
         };
 
-        int ancho = puntosBase.Max(p => p.X);
-        int largo = puntosBase.Max(p => p.Y);
+        Point[] puntosEscalados = puntosBase
+            .Select(p => new Point(p.X * factorEscala, p.Y * factorEscala))
+            .ToArray();
 
-        Point[] puntosRotados = new Point[puntosBase.Length];
-        for (int i = 0; i < puntosBase.Length; i++)
+        int ancho = puntosEscalados.Max(p => p.X);
+        int largo = puntosEscalados.Max(p => p.Y);
+
+        Point[] puntosRotados = new Point[puntosEscalados.Length];
+        for (int i = 0; i < puntosEscalados.Length; i++)
         {
-            puntosRotados[i].X = puntosBase[i].X;
-            puntosRotados[i].Y = angRotar == 180 ? largo - puntosBase[i].Y : puntosBase[i].Y;
+            puntosRotados[i].X = puntosEscalados[i].X;
+            puntosRotados[i].Y = angRotar == 180 ? largo - puntosEscalados[i].Y : puntosEscalados[i].Y;
         }
 
         GraphicsPath path = new();
@@ -54,8 +62,24 @@ public static class AvionFactory
         using (Graphics g = Graphics.FromImage(imagen))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.FillPolygon(new SolidBrush(color), puntosRotados);
-            g.DrawPolygon(Pens.Black, puntosRotados);
+            Color brillo = Color.FromArgb(
+                Math.Min(255, color.R + 60),
+                Math.Min(255, color.G + 60),
+                Math.Min(255, color.B + 60));
+
+            using var pincel = new LinearGradientBrush(new Rectangle(0, 0, tamano.Width, tamano.Height), color, brillo, LinearGradientMode.ForwardDiagonal);
+            using var lapiz = new Pen(Color.Black, 3);
+
+            g.FillPolygon(pincel, puntosRotados);
+            g.DrawPolygon(lapiz, puntosRotados);
+
+            Rectangle cabina = new((tamano.Width / 2) - (6 * factorEscala / 2), 6 * factorEscala, 6 * factorEscala, 6 * factorEscala);
+            g.FillEllipse(new SolidBrush(Color.FromArgb(220, Color.LightSkyBlue)), cabina);
+            g.DrawEllipse(new Pen(Color.DarkBlue, 2), cabina);
+
+            Rectangle decoracionCola = new((int)(tamano.Width * 0.35), (int)(tamano.Height * 0.55), (int)(tamano.Width * 0.3), (int)(tamano.Height * 0.25));
+            g.FillRectangle(new SolidBrush(Color.FromArgb(140, brillo)), decoracionCola);
+            g.DrawRectangle(new Pen(Color.Black, 2), decoracionCola);
         }
 
         return new AvionRender(puntosRotados, tamano, new Region(path), imagen);
