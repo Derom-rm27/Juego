@@ -195,16 +195,15 @@ namespace MoverObjeto
             }
 
             // ELIMINACION DEL MISIL Y DESCONTAR PUNTOS DE IMPACTO
-            foreach (Control c in contiene.Controls.OfType<PictureBox>().ToList())
+            foreach (var c in contiene.Controls.OfType<PictureBox>().ToList())
             {
-                if ((string?)c.Tag != null)
+                if (c.Tag is string nombre)
                 {
-                    PictureBox missile = (PictureBox)c;
+                    var missile = c;
                     int X1 = missile.Location.X;
                     int Y1 = missile.Location.Y;
                     int W1 = missile.Width;
                     int H1 = missile.Height;
-                    string nombre = missile.Tag!.ToString()!;
 
                     // ACTIVIDAD DE IMPACTO CON LA NAVE RIVAL ("Misil" es el misil del jugador)
                     if (nombre == "Misil" &&
