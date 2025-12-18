@@ -34,8 +34,8 @@ namespace MoverObjeto
         int cooldownDisparo = 0;
 
         // Variables de Control de Movimiento (Enemigo)
-        int enemySpeedX = 6; // Reducido de 12 a 6
-        int enemySpeedY = 4; // Reducido de 8 a 4
+        int enemySpeedX = 6;
+        int enemySpeedY = 4;
         bool enemyMovingRight = true;
         bool enemyMovingDown = true;
 
@@ -121,6 +121,7 @@ namespace MoverObjeto
                 Size = new Size(400, 200),
                 BackColor = Color.FromArgb(240, 240, 240),
                 BorderStyle = BorderStyle.FixedSingle,
+                Anchor = AnchorStyles.None, // Para centrarlo
                 Location = new Point((contiene.Width - 400) / 2, (contiene.Height - 200) / 2)
             };
 
@@ -179,12 +180,10 @@ namespace MoverObjeto
             }
         }
 
-        //*** BUCLE PRINCIPAL DEL JUEGO ***//
         private void ImpactarTick(object sender, EventArgs e)
         {
             if (!juegoListo) return;
 
-            // 1. Lógica del Jugador (Movimiento y Disparo simultáneo)
             if (goLeft && contiene.Left < navex.Left - playerSpeed) navex.Left -= playerSpeed;
             if (goRight && contiene.Right > navex.Right + playerSpeed) navex.Left += playerSpeed;
             if (goUp && contiene.Top < navex.Top - playerSpeed) navex.Top -= playerSpeed;
@@ -193,17 +192,15 @@ namespace MoverObjeto
             if (goShoot && cooldownDisparo < 1)
             {
                 CrearMisil(0, Color.DarkMagenta, "Misil", navex.Location.X + (navex.Width / 2), navex.Location.Y);
-                cooldownDisparo = 5; // Retraso entre disparos
+                cooldownDisparo = 5;
             }
             if (cooldownDisparo > 0) cooldownDisparo--;
 
-            // 2. Lógica del Enemigo (Movimiento Rápido y Rebote en zona superior)
             int xRival = naveRival.Location.X;
             int yRival = naveRival.Location.Y;
             int limiteMedio = contiene.Height / 2;
             int padding = 10;
 
-            // Movimiento Horizontal Enemigo
             if (enemyMovingRight)
             {
                 xRival += enemySpeedX;
@@ -215,7 +212,6 @@ namespace MoverObjeto
                 if (xRival < padding) enemyMovingRight = true;
             }
 
-            // Movimiento Vertical Enemigo (Rebote hasta la mitad)
             if (enemyMovingDown)
             {
                 yRival += enemySpeedY;
@@ -229,15 +225,13 @@ namespace MoverObjeto
             naveRival.Location = new Point(xRival, yRival);
             ActualizarPosicionBarraRival();
 
-            // 3. Disparo del Enemigo (Más rápido)
             Dispara++;
-            if (Dispara > 30 && naveRival.Visible) // Dispara más seguido (antes 60)
+            if (Dispara > 30 && naveRival.Visible)
             {
                 CrearMisil(180, Color.OrangeRed, "Rival", naveRival.Location.X + (naveRival.Width / 2), naveRival.Location.Y + naveRival.Height);
                 Dispara = 0;
             }
 
-            // 4. Colisiones entre Naves
             if (Colision.EntreNaves(navex, naveRival)) {
                 if (!naveColisionando) {
                     ActualizarVidaJugador(-10);
@@ -247,12 +241,10 @@ namespace MoverObjeto
                 naveColisionando = false;
             }
 
-            // 5. Gestión de Proyectiles y Obstáculos
             foreach (var c in contiene.Controls.OfType<PictureBox>().ToList())
             {
                 if (c.Tag is string nombre)
                 {
-                    // Colisiones Misiles
                     if (nombre == "Misil" && Colision.ImpactaObjeto(naveRival.Bounds, c.Bounds, 10)) {
                         c.Dispose();
                         ActualizarVidaRival(-1);
@@ -261,12 +253,11 @@ namespace MoverObjeto
                         ActualizarVidaJugador(-1);
                     }
                     
-                    // Movimiento Misiles
                     if (nombre == "Misil") {
-                        c.Top -= 15; // Misiles jugador más rápidos
+                        c.Top -= 15;
                         if (c.Location.Y < 0) c.Dispose();
                     } else if (nombre == "Rival") {
-                        c.Top += 15; // Misiles rival más rápidos
+                        c.Top += 15;
                         if (c.Location.Y > contiene.Height) c.Dispose();
                     }
                 }
@@ -300,7 +291,6 @@ namespace MoverObjeto
             Avion.Visible = true;
         }
 
-        // Evento KeyDown: Activa banderas
         private void KeyIsDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Left) goLeft = true;
@@ -310,7 +300,6 @@ namespace MoverObjeto
             if (e.KeyCode == Keys.Space) goShoot = true;
         }
 
-        // Evento KeyUp: Desactiva banderas
         private void KeyIsUp(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Left) goLeft = false;
@@ -322,9 +311,8 @@ namespace MoverObjeto
 
         public void Iniciar()
         {
-            this.FormBorderStyle = FormBorderStyle.FixedSingle;
-            this.Width = 700;
-            this.Height = 600;
+            this.WindowState = FormWindowState.Maximized;
+            this.FormBorderStyle = FormBorderStyle.Sizable;
             this.Text = "JUEGO DE AVIONES";
 
             panelInformacion.Dock = DockStyle.Top;
@@ -353,7 +341,6 @@ namespace MoverObjeto
             panelInformacion.Controls.Add(label2);
             panelInformacion.Controls.Add(label1);
 
-            // Asignar eventos de teclado separados
             this.KeyDown += KeyIsDown;
             this.KeyUp += KeyIsUp;
             this.KeyPreview = true;
@@ -361,11 +348,17 @@ namespace MoverObjeto
             contiene.BackColor = Color.AliceBlue;
             contiene.Dock = DockStyle.Fill;
             contiene.Visible = true;
-            contiene.BackgroundImage = Escenarios.CrearEscenario(escenarioSeleccionado, contiene.ClientSize);
             contiene.BackgroundImageLayout = ImageLayout.Stretch;
-
+            
             this.Controls.Add(contiene);
             this.Controls.Add(panelInformacion);
+
+            // Evento para re-dibujar el fondo cuando se redimensiona
+            this.Resize += (sender, args) => {
+                if (juegoListo) {
+                    contiene.BackgroundImage = Escenarios.CrearEscenario(escenarioSeleccionado, contiene.ClientSize);
+                }
+            };
 
             Random r = new Random();
             int aleatxr = r.Next(50, this.ClientSize.Width - 100);
@@ -411,6 +404,8 @@ namespace MoverObjeto
             timerObstaculos.Start();
 
             juegoListo = true;
+            // Forzar la primera carga del fondo con el tamaño correcto
+            contiene.BackgroundImage = Escenarios.CrearEscenario(escenarioSeleccionado, contiene.ClientSize);
         }
     }
 }
