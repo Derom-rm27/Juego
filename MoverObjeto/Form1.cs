@@ -1,11 +1,7 @@
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Drawing.Drawing2D; // Librería para GraphicsPath
 using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 
 namespace MoverObjeto
@@ -16,32 +12,36 @@ namespace MoverObjeto
         PictureBox navex = new PictureBox();
         PictureBox naveRival = new PictureBox();
         PictureBox contiene = new PictureBox();
-        Timer tiempo;
-        Label label1 = new Label(); // Asunción: necesario para mostrar puntos del rival
-        Label label2 = new Label(); // Asunción: necesario para mostrar puntos de la nave
-        
+        System.Windows.Forms.Timer tiempo = new System.Windows.Forms.Timer();
+        Label label1 = new Label(); // Vida del rival
+        Label label2 = new Label(); // Vida del jugador
+
         int Dispara = 0;
         bool flag = false;
         float angulo = 0;
+        bool naveColisionando = false;
 
-        // Necesario si este código es parte de un proyecto real, aunque esté vacío.
-        // Se asume que estos componentes existen.
-        private void InitializeComponent()
+        private readonly AvionConfig seleccionJugador;
+        private readonly int escenarioSeleccionado;
+        private bool juegoListo;
+
+        public Form1(AvionConfig? config = null, int escenario = 0)
         {
-            // Se debe inicializar en el diseñador o aquí si es un archivo único.
-            this.SuspendLayout();
-            this.label1.Text = "Mi Rival";
-            this.label2.Text = "Mi Avión";
-            this.Controls.Add(this.label1);
-            this.Controls.Add(this.label2);
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            seleccionJugador = config ?? AvionFactory.Blindado;
+            escenarioSeleccionado = escenario;
+
+            InitializeComponent();
+            Load += Form1_Load;
+        }
+
+        private void Form1_Load(object? sender, EventArgs e)
+        {
+            Iniciar();
         }
 
         //********** DIAGRAMAR DEL MISIL ***********//
         public void CrearMisil(int AngRotar, Color pintar, string nombre, int x, int y)
         {
-            // Usamos PictureBox en lugar de dynamic para una mejor práctica
             PictureBox Balas = new PictureBox();
             
             // Declaración de variables para el tamaño del misil
@@ -89,6 +89,48 @@ namespace MoverObjeto
             flagImagen.FillRectangle(Brushes.Orange, 0, 0, anchoM, 5);
             flagImagen.FillRectangle(Brushes.Yellow, 0, 5, anchoM, 6);
             Balas.Image = flag;
+        }
+
+        private void ActualizarVidaJugador(int delta)
+        {
+            int vidaActual = int.Parse(navex.Tag.ToString()) + delta;
+            navex.Tag = vidaActual;
+            label2.Text = "Vida: " + Math.Max(vidaActual, 0);
+
+            if (vidaActual <= 0)
+            {
+                navex.Dispose();
+                Bitmap NuevoImg = new Bitmap(contiene.Width, contiene.Height);
+                Graphics flagImagen = Graphics.FromImage(NuevoImg);
+                String drawString = "Perdiste el Juego";
+                Font drawFont = new Font("Arial", 16);
+                SolidBrush drawBrush = new SolidBrush(Color.Red);
+                Point drawPoint = new Point(70, 150);
+                flagImagen.DrawString(drawString, drawFont, drawBrush, drawPoint);
+                contiene.Image = NuevoImg;
+                tiempo.Stop();
+            }
+        }
+
+        private void ActualizarVidaRival(int delta)
+        {
+            int vidaActual = int.Parse(naveRival.Tag.ToString()) + delta;
+            naveRival.Tag = vidaActual;
+            label1.Text = "Vida del Rival: " + Math.Max(vidaActual, 0);
+
+            if (vidaActual <= 0)
+            {
+                naveRival.Dispose();
+                Bitmap NuevoImg = new Bitmap(contiene.Width, contiene.Height);
+                Graphics flagImagen = Graphics.FromImage(NuevoImg);
+                String drawString = "Felicitaciones Ganaste!";
+                Font drawFont = new Font("Arial", 16);
+                SolidBrush drawBrush = new SolidBrush(Color.Blue);
+                Point drawPoint = new Point(40, 150);
+                flagImagen.DrawString(drawString, drawFont, drawBrush, drawPoint);
+                contiene.Image = NuevoImg;
+                tiempo.Stop();
+            }
         }
 
         //*** DESCRUCTOR DEL MISIL / GAME LOOP (ImpactarTick) ****
@@ -139,86 +181,45 @@ namespace MoverObjeto
             }
             naveRival.Location = new Point(x, y);
 
-            // ELIMINACION DEL MISIL Y DESCONTAR PUNTOS DE IMPACTO
-            foreach (Control c in contiene.Controls)
+            if (Colision.EntreNaves(navex, naveRival))
             {
-                if (c is PictureBox && (string)((PictureBox)c).Tag != null)
+                if (!naveColisionando)
+                {
+                    ActualizarVidaJugador(-10);
+                    naveColisionando = true;
+                }
+            }
+            else
+            {
+                naveColisionando = false;
+            }
+
+            // ELIMINACION DEL MISIL Y DESCONTAR PUNTOS DE IMPACTO
+            foreach (Control c in contiene.Controls.OfType<PictureBox>().ToList())
+            {
+                if ((string?)c.Tag != null)
                 {
                     PictureBox missile = (PictureBox)c;
                     int X1 = missile.Location.X;
                     int Y1 = missile.Location.Y;
                     int W1 = missile.Width;
                     int H1 = missile.Height;
-                    string nombre = missile.Tag.ToString();
+                    string nombre = missile.Tag!.ToString()!;
 
                     // ACTIVIDAD DE IMPACTO CON LA NAVE RIVAL ("Misil" es el misil del jugador)
                     if (nombre == "Misil" &&
-                        X < X1 && X1 + W1 < X + W &&
-                        Y < Y1 && Y1 + H1 < Y + H) // Colisión con nave Rival
+                        Colision.ImpactaObjeto(new Rectangle(X, Y, W, H), new Rectangle(X1, Y1, W1, H1), PH))
                     {
-                        // Lógica de colisión más específica (zona de impacto)
-                        if (X + PH < X1 && X1 + W1 < X + W - PH)
-                        {
-                            missile.Dispose();
-                            // El código original parece restar 1 punto si está fuera de PH, o quizás es un error en el código fuente.
-                            // Lo mantendré como una resta simple para simular un impacto.
-                            naveRival.Tag = int.Parse(naveRival.Tag.ToString()) - 1;
-                        }
-                        else
-                        {
-                            missile.Dispose();
-                            naveRival.Tag = int.Parse(naveRival.Tag.ToString()) - 1;
-                        }
-
-                        label1.Text = "Vida del Rival: " + naveRival.Tag.ToString();
-
-                        // LÓGICA DE FIN DE JUEGO (VICTORIA)
-                        if (int.Parse(naveRival.Tag.ToString()) <= 0)
-                        {
-                            naveRival.Dispose();
-                            Bitmap NuevoImg = new Bitmap(contiene.Width, contiene.Height);
-                            Graphics flagImagen = Graphics.FromImage(NuevoImg);
-                            String drawString = "Felicitaciones Ganaste!";
-                            Font drawFont = new Font("Arial", 16);
-                            SolidBrush drawBrush = new SolidBrush(Color.Blue);
-                            Point drawPoint = new Point(40, 150);
-                            flagImagen.DrawString(drawString, drawFont, drawBrush, drawPoint);
-                            contiene.Image = NuevoImg;
-                            tiempo.Stop();
-                        }
+                        missile.Dispose();
+                        ActualizarVidaRival(-1);
                     }
 
                     // ACTIVIDAD DE IMPACTO CON MI NAVE ("Rival" es el misil del rival)
                     if (nombre == "Rival" &&
-                        X2 < X1 && X1 + W1 < X2 + W2 &&
-                        Y2 < Y1 && Y1 + H1 < Y2 + H2) // Colisión con nave Jugador
+                        Colision.ImpactaObjeto(new Rectangle(X2, Y2, W2, H2), new Rectangle(X1, Y1, W1, H1), PH))
                     {
-                        if (X2 + PH < X1 && X1 + W1 < X2 + W2 - PH)
-                        {
-                            missile.Dispose();
-                        }
-                        else
-                        {
-                            missile.Dispose();
-                            navex.Tag = int.Parse(navex.Tag.ToString()) - 1;
-                        }
-                        
-                        label2.Text = "Vida: " + navex.Tag.ToString();
-
-                        // LÓGICA DE FIN DE JUEGO (DERROTA)
-                        if (int.Parse(navex.Tag.ToString()) <= 0)
-                        {
-                            navex.Dispose();
-                            Bitmap NuevoImg = new Bitmap(contiene.Width, contiene.Height);
-                            Graphics flagImagen = Graphics.FromImage(NuevoImg);
-                            String drawString = "Perdiste el Juego";
-                            Font drawFont = new Font("Arial", 16);
-                            SolidBrush drawBrush = new SolidBrush(Color.Red);
-                            Point drawPoint = new Point(70, 150);
-                            flagImagen.DrawString(drawString, drawFont, drawBrush, drawPoint);
-                            contiene.Image = NuevoImg;
-                            tiempo.Stop();
-                        }
+                        missile.Dispose();
+                        ActualizarVidaJugador(-1);
                     }
                     
                     // Lógica de movimiento del misil del jugador y eliminación por límite
@@ -245,65 +246,21 @@ namespace MoverObjeto
         }
 
         //*** DIAGRAMAR NAVE **********//
-        public void CrearNave(PictureBox Avion, int AngRotar, int Tipox, Color Pintar, int Vida)
+        public void CrearNave(PictureBox Avion, int AngRotar, AvionConfig config)
         {
-            int largoN = 0;
-            int anchoN = 0;
+            AvionRender render = AvionFactory.Crear(config.Tipo, AngRotar, config.Color);
 
-            // Arrays de puntos de las diferentes naves (Se omiten por ser demasiado extensos en la transcripción, pero se simula la lógica)
-            // Se asume que myNave1, myNave2, myNave3 están definidos o son arrays de Point.
-            // Para mantener el código compilable, se usa una forma simplificada de nave 1.
-            Point[] myNavel = { 
-                new Point(29, 0), new Point(39, 28), new Point(50, 51), new Point(35, 74), 
-                new Point(23, 74), new Point(0, 59), new Point(19, 28), new Point(29, 0) 
-            };
-            
-            Point[] myNave;
-
-            GraphicsPath ObjGrafico = new GraphicsPath();
-
-            if (Tipox == 1)
-            {
-                largoN = 77;
-                anchoN = 58;
-
-                myNave = new Point[myNavel.Count()];
-                for (int i = 0; i < myNavel.Count(); i++)
-                {
-                    myNave[i].X = myNavel[i].X;
-                    if (AngRotar == 180)
-                        myNave[i].Y = largoN - myNavel[i].Y;
-                    else
-                        myNave[i].Y = myNavel[i].Y;
-                }
-                ObjGrafico.AddPolygon(myNave);
-            }
-            // Las otras naves (Tipox 2 y 3) requerirían la definición de myNave2 y myNave3
-            // La lógica para Tipox 2 y 3 es similar a Tipox 1.
-
-            Avion.BackColor = Pintar;
-            Avion.Size = new Size(anchoN, largoN);
-            Avion.Region = new Region(ObjGrafico);
+            Avion.BackColor = Color.Transparent;
+            Avion.Size = render.Tamano;
+            Avion.Region = render.Region;
             Avion.Location = new Point(0, 0);
             
             //*********INSERTAR LA NAVE AL CONTENDOR***********//
             contiene.Controls.Add(Avion);
 
             // DIBUJAR IMAGEN DENTRO DE LA NAVE (EFECTOS/COLORES)
-            Bitmap Imagen = new Bitmap(Avion.Width, Avion.Height);
-            Graphics PintaImg = Graphics.FromImage(Imagen);
-
-            // Aquí se usaría el array 'Colorea' para rellenar la nave. Se omite el array 'Colorea' por ser extenso.
-            // PintaImg.FillPolygon(Brushes.DarkGreen, Colorea);
-            
-            // Dibuja el borde del polígono (el código original lo hace)
-            if (myNave != null)
-            {
-                PintaImg.DrawPolygon(Pens.Black, myNave);
-            }
-            
-            Avion.Image = Imagen;
-            Avion.Tag = Vida;
+            Avion.Image = render.Imagen;
+            Avion.Tag = config.Vida;
             Avion.Visible = true;
         }
 
@@ -312,12 +269,6 @@ namespace MoverObjeto
         {
             Bitmap Imagen = new Bitmap(Avion.Width, Avion.Height);
             Graphics PintaImg = Graphics.FromImage(Imagen);
-            
-            // Se omiten los arrays 'puntoDer', 'puntoIzq', 'puntoAtr' por ser muy extensos.
-            // El código original pintaba estos polígonos:
-            // PintaImg.FillPolygon(Brushes.DarkGreen, puntoDer);
-            // PintaImg.FillPolygon(Brushes.DarkGreen, puntoIzq);
-            // PintaImg.FillPolygon(Brushes.DarkGreen, puntoAtr);
             
             // DIBUJAR ESCAPES
             PintaImg.FillRectangle(Brushes.Silver, 25, 0, 1, 15);
@@ -330,17 +281,14 @@ namespace MoverObjeto
                 PintaImg.FillRectangle(Brushes.DarkOrange, 35, 6, 1, 1);
                 PintaImg.FillRectangle(Brushes.Orange, 36, 5, 4, 1);
                 PintaImg.FillRectangle(Brushes.Yellow, 37, 5, 2, 1);
-                // El código original contiene líneas incompletas para el fuego. Se asume un patrón.
             }
             else if (velox == 2) // Velocidad 2
             {
                 PintaImg.FillRectangle(Brushes.DarkRed, 5, 7, 1, 8);
-                // ...
             }
             else if (velox == 3) // Velocidad 3
             {
                 PintaImg.FillRectangle(Brushes.DarkRed, 15, 30, 1, 16);
-                // ...
             }
 
             Avion.Image = RotateImage(Imagen, AngRotar);
@@ -363,6 +311,11 @@ namespace MoverObjeto
         //*** MOVIMIENTO DEL TECLADO DEL USUARIO ***********//
         public void ActividadTecla(object sender, KeyEventArgs e)
         {
+            if (!juegoListo || navex.Tag == null)
+            {
+                return;
+            }
+
             //INSTRUCCIONES DE LOS BOTONES
             switch (e.KeyValue)
             {
@@ -443,42 +396,37 @@ namespace MoverObjeto
             this.Controls.Add(contiene);
             contiene.BringToFront(); // Para asegurar que las etiquetas estén visibles
 
+            contiene.BackgroundImage = Escenarios.CrearEscenario(escenarioSeleccionado, contiene.ClientSize);
+            contiene.BackgroundImageLayout = ImageLayout.Stretch;
+
             //----- contenido del formulario
             Random r = new Random();
-            int aleatyr = r.Next(250, 330);
             int aleatxr = r.Next(50, 250);
 
-            // NAVE JUGADOR (Tipox 1, sin rotación (0), Vida 20)
-            CrearNave(navex, 0, 1, Color.SeaGreen, 20);
+            // NAVE JUGADOR
+            CrearNave(navex, 0, seleccionJugador);
+            navex.Tag = 100; // Vida inicial garantizada
 
             // ELEGIR NAVE DE SALIDA RIVAL
             Random sal = new Random();
-            int sale = sal.Next(1, 3);
-            // NAVE RIVAL (Rotación 180, tipo aleatorio, Vida 50)
-            CrearNave(naveRival, 180, sale, Color.DarkBlue, 50);
+            int sale = sal.Next(1, 4);
+            AvionConfig configRival = new("Rival", sale, 50, Color.DarkBlue);
+            CrearNave(naveRival, 180, configRival);
 
             // Posicionar naves
-            // El código original usa variables aleatorias para navex.
             navex.Location = new Point(aleatxr, 300); 
             naveRival.Location = new Point(aleatxr, 50);
 
+            label1.Text = "Vida del Rival: " + configRival.Vida;
+            label2.Text = "Vida: " + navex.Tag;
+
             // Inicializar y configurar el Timer (bucle de juego)
-            tiempo = new Timer();
             tiempo.Interval = 50; // Intervalo más razonable para Windows Forms (50ms)
             tiempo.Enabled = true;
             tiempo.Tick += new EventHandler(ImpactarTick);
             tiempo.Start();
-        }
 
-        //*********** ARGUMENTOS GENERADOS POR EL PROGRAMA **********//
-        public Form1()
-        {
-            InitializeComponent();
-        }
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            Iniciar();
+            juegoListo = true;
         }
     }
 }
