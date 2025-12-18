@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MoverObjeto")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6920fbdc66f2453bd39b9097e9231c924e8afda5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2da489eab3999531a3acb0c6735838feaefd12c6")]
 [assembly: System.Reflection.AssemblyProductAttribute("MoverObjeto")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MoverObjeto")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

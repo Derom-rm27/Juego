@@ -1,54 +1,130 @@
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 
-namespace MoverObjeto;
-
-public static class Escenarios
+namespace MoverObjeto
 {
-    public static int TotalEscenarios => 4;
-
-    public static Bitmap CrearEscenario(int numeroEscenario, Size tamano)
+    public static class Escenarios
     {
-        Bitmap fondo = new(tamano.Width, tamano.Height);
-        using Graphics g = Graphics.FromImage(fondo);
-        g.SmoothingMode = SmoothingMode.AntiAlias;
+        public static int TotalEscenarios => 4;
 
-        switch (numeroEscenario % TotalEscenarios)
+        public static Bitmap CrearEscenario(int numeroEscenario, Size tamano)
         {
-            case 0:
-                DibujarCielo(g, tamano, Color.LightSkyBlue, Color.SteelBlue);
-                break;
-            case 1:
-                DibujarCielo(g, tamano, Color.DarkSlateGray, Color.Black);
-                g.FillEllipse(new SolidBrush(Color.LightYellow), tamano.Width - 120, 30, 80, 80);
-                break;
-            case 2:
-                DibujarCielo(g, tamano, Color.DarkOliveGreen, Color.ForestGreen);
-                g.FillRectangle(new SolidBrush(Color.SandyBrown), 0, tamano.Height - 60, tamano.Width, 60);
-                break;
-            default:
-                DibujarCielo(g, tamano, Color.MidnightBlue, Color.Indigo);
-                DibujarEstrellas(g, tamano, 45);
-                break;
+            Bitmap fondo = new Bitmap(tamano.Width, tamano.Height);
+            using (Graphics g = Graphics.FromImage(fondo))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                switch (numeroEscenario % TotalEscenarios)
+                {
+                    case 0:
+                        DibujarEspacioProfundoConNebulosa(g, tamano);
+                        break;
+                    case 1:
+                        DibujarPlanetaConAnillos(g, tamano);
+                        break;
+                    case 2:
+                        DibujarCampoDeAsteroidesDinamico(g, tamano);
+                        break;
+                    default:
+                        DibujarEstacionEspacialFuturista(g, tamano);
+                        break;
+                }
+            }
+            return fondo;
         }
 
-        return fondo;
-    }
-
-    private static void DibujarCielo(Graphics g, Size tamano, Color colorInicio, Color colorFin)
-    {
-        using LinearGradientBrush brush = new(new Point(0, 0), new Point(0, tamano.Height), colorInicio, colorFin);
-        g.FillRectangle(brush, 0, 0, tamano.Width, tamano.Height);
-    }
-
-    private static void DibujarEstrellas(Graphics g, Size tamano, int cantidad)
-    {
-        Random random = new(7);
-        for (int i = 0; i < cantidad; i++)
+        private static void DibujarEspacioProfundoConNebulosa(Graphics g, Size tamano)
         {
-            int x = random.Next(tamano.Width);
-            int y = random.Next(tamano.Height / 2);
-            g.FillEllipse(Brushes.WhiteSmoke, x, y, 3, 3);
+            g.FillRectangle(new SolidBrush(Color.FromArgb(5, 0, 15)), 0, 0, tamano.Width, tamano.Height);
+            
+            using (var path = new GraphicsPath())
+            {
+                path.AddEllipse(new Rectangle(-tamano.Width / 4, tamano.Height / 4, tamano.Width, tamano.Height));
+                using (var brush = new PathGradientBrush(path))
+                {
+                    brush.CenterColor = Color.FromArgb(80, 150, 100, 255);
+                    brush.SurroundColors = new[] { Color.FromArgb(0, 5, 0, 15) };
+                    g.FillPath(brush, path);
+                }
+            }
+            DibujarEstrellas(g, tamano, 250, true);
+        }
+
+        private static void DibujarPlanetaConAnillos(Graphics g, Size tamano)
+        {
+            g.FillRectangle(new SolidBrush(Color.FromArgb(10, 5, 20)), 0, 0, tamano.Width, tamano.Height);
+            DibujarEstrellas(g, tamano, 100, false);
+
+            int planetaTamano = tamano.Width / 3;
+            int planetaX = tamano.Width - planetaTamano - 50;
+            int planetaY = 50;
+
+            // Anillos
+            g.DrawEllipse(new Pen(Color.FromArgb(100, 210, 210, 200), 15), planetaX - 20, planetaY + planetaTamano / 2 - 10, planetaTamano + 40, 40);
+            
+            // Planeta
+            using (var brush = new LinearGradientBrush(new Point(planetaX, planetaY), new Point(planetaX + planetaTamano, planetaY + planetaTamano), Color.SteelBlue, Color.DarkSlateBlue))
+            {
+                g.FillEllipse(brush, planetaX, planetaY, planetaTamano, planetaTamano);
+            }
+        }
+
+        private static void DibujarCampoDeAsteroidesDinamico(Graphics g, Size tamano)
+        {
+            g.FillRectangle(new SolidBrush(Color.FromArgb(15, 15, 15)), 0, 0, tamano.Width, tamano.Height);
+            Random rand = new Random();
+            for (int i = 0; i < 40; i++)
+            {
+                int size = rand.Next(10, 120);
+                int x = rand.Next(-40, tamano.Width);
+                int y = rand.Next(-40, tamano.Height);
+                int grayTone = rand.Next(40, 120);
+                g.FillEllipse(new SolidBrush(Color.FromArgb(rand.Next(100, 200), grayTone, grayTone, grayTone)), x, y, size, size);
+            }
+            DibujarEstrellas(g, tamano, 70, true);
+        }
+
+        private static void DibujarEstacionEspacialFuturista(Graphics g, Size tamano)
+        {
+            g.FillRectangle(new SolidBrush(Color.FromArgb(5, 5, 15)), 0, 0, tamano.Width, tamano.Height);
+            
+            Point centro = new Point(tamano.Width / 3, tamano.Height / 2);
+            int radio = 120;
+            
+            // Estructura principal
+            g.FillEllipse(Brushes.DimGray, centro.X - radio, centro.Y - radio, radio * 2, radio * 2);
+            g.DrawEllipse(Pens.LightGray, centro.X - radio, centro.Y - radio, radio * 2, radio * 2);
+
+            // Luces
+            for (int i = 0; i < 360; i += 30)
+            {
+                double angulo = i * Math.PI / 180;
+                int x = centro.X + (int)(radio * Math.Cos(angulo));
+                int y = centro.Y + (int)(radio * Math.Sin(angulo));
+                g.FillEllipse(Brushes.Aqua, x - 5, y - 5, 10, 10);
+            }
+            DibujarEstrellas(g, tamano, 120, false);
+        }
+
+        private static void DibujarEstrellas(Graphics g, Size tamano, int cantidad, bool conBrillo)
+        {
+            Random random = new Random();
+            for (int i = 0; i < cantidad; i++)
+            {
+                int x = random.Next(tamano.Width);
+                int y = random.Next(tamano.Height);
+                int size = random.Next(1, 4);
+                g.FillEllipse(Brushes.White, x, y, size, size);
+
+                if (conBrillo && random.Next(0, 10) == 0)
+                {
+                    var pen = new Pen(Color.FromArgb(150, 255, 255, 255), 1);
+                    g.DrawLine(pen, x + size / 2, y - size, x + size / 2, y + size * 2);
+                    g.DrawLine(pen, x - size, y + size / 2, x + size * 2, y + size / 2);
+                    pen.Dispose();
+                }
+            }
         }
     }
 }
