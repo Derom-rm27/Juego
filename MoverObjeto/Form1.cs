@@ -12,7 +12,7 @@ namespace MoverObjeto
         PictureBox navex = new PictureBox();
         PictureBox naveRival = new PictureBox();
         PictureBox contiene = new PictureBox();
-        System.Windows.Forms.Timer tiempo;
+        System.Windows.Forms.Timer tiempo = new System.Windows.Forms.Timer();
         Label label1 = new Label(); // Vida del rival
         Label label2 = new Label(); // Vida del jugador
 
@@ -23,6 +23,7 @@ namespace MoverObjeto
 
         private readonly AvionConfig seleccionJugador;
         private readonly int escenarioSeleccionado;
+        private bool juegoListo;
 
         public Form1(AvionConfig? config = null, int escenario = 0)
         {
@@ -180,7 +181,7 @@ namespace MoverObjeto
             }
             naveRival.Location = new Point(x, y);
 
-            if (navex.Visible && naveRival.Visible && navex.Bounds.IntersectsWith(naveRival.Bounds))
+            if (Colision.EntreNaves(navex, naveRival))
             {
                 if (!naveColisionando)
                 {
@@ -207,38 +208,18 @@ namespace MoverObjeto
 
                     // ACTIVIDAD DE IMPACTO CON LA NAVE RIVAL ("Misil" es el misil del jugador)
                     if (nombre == "Misil" &&
-                        X < X1 && X1 + W1 < X + W &&
-                        Y < Y1 && Y1 + H1 < Y + H) // Colisión con nave Rival
+                        Colision.ImpactaObjeto(new Rectangle(X, Y, W, H), new Rectangle(X1, Y1, W1, H1), PH))
                     {
-                        // Lógica de colisión más específica (zona de impacto)
-                        if (X + PH < X1 && X1 + W1 < X + W - PH)
-                        {
-                            missile.Dispose();
-                            // El código original parece restar 1 punto si está fuera de PH, o quizás es un error en el código fuente.
-                            // Lo mantendré como una resta simple para simular un impacto.
-                            ActualizarVidaRival(-1);
-                        }
-                        else
-                        {
-                            missile.Dispose();
-                            ActualizarVidaRival(-1);
-                        }
+                        missile.Dispose();
+                        ActualizarVidaRival(-1);
                     }
 
                     // ACTIVIDAD DE IMPACTO CON MI NAVE ("Rival" es el misil del rival)
                     if (nombre == "Rival" &&
-                        X2 < X1 && X1 + W1 < X2 + W2 &&
-                        Y2 < Y1 && Y1 + H1 < Y2 + H2) // Colisión con nave Jugador
+                        Colision.ImpactaObjeto(new Rectangle(X2, Y2, W2, H2), new Rectangle(X1, Y1, W1, H1), PH))
                     {
-                        if (X2 + PH < X1 && X1 + W1 < X2 + W2 - PH)
-                        {
-                            missile.Dispose();
-                        }
-                        else
-                        {
-                            missile.Dispose();
-                            ActualizarVidaJugador(-1);
-                        }
+                        missile.Dispose();
+                        ActualizarVidaJugador(-1);
                     }
                     
                     // Lógica de movimiento del misil del jugador y eliminación por límite
@@ -330,6 +311,11 @@ namespace MoverObjeto
         //*** MOVIMIENTO DEL TECLADO DEL USUARIO ***********//
         public void ActividadTecla(object sender, KeyEventArgs e)
         {
+            if (!juegoListo || navex.Tag == null)
+            {
+                return;
+            }
+
             //INSTRUCCIONES DE LOS BOTONES
             switch (e.KeyValue)
             {
@@ -419,6 +405,7 @@ namespace MoverObjeto
 
             // NAVE JUGADOR
             CrearNave(navex, 0, seleccionJugador);
+            navex.Tag = 100; // Vida inicial garantizada
 
             // ELEGIR NAVE DE SALIDA RIVAL
             Random sal = new Random();
@@ -431,13 +418,15 @@ namespace MoverObjeto
             naveRival.Location = new Point(aleatxr, 50);
 
             label1.Text = "Vida del Rival: " + configRival.Vida;
-            label2.Text = "Vida: " + seleccionJugador.Vida;
+            label2.Text = "Vida: " + navex.Tag;
 
             // Inicializar y configurar el Timer (bucle de juego)
             tiempo.Interval = 50; // Intervalo más razonable para Windows Forms (50ms)
             tiempo.Enabled = true;
             tiempo.Tick += new EventHandler(ImpactarTick);
             tiempo.Start();
+
+            juegoListo = true;
         }
     }
 }
